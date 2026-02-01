@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Flutter Edge",
+            "request": "launch",
+            "type": "dart",
+            "args": [
+                "--device-id",
+                "edge",
+                "--web-port",
+                "5000",
+                "--web-renderer",
+                "html"
+            ]
+        }
+    ]
+}

@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "679249631722",
+    "project_id": "go-app-c5f37",
+    "storage_bucket": "go-app-c5f37.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:679249631722:android:25b598937f5cdea493fa93",
+        "android_client_info": {
+          "package_name": "com.go.go"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "679249631722-tunpu2i1du36qenjk4luahgnas8aald8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAV2UXgYY9IAHb7ompvxdKZqQzxY2hvnKk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "679249631722-tunpu2i1du36qenjk4luahgnas8aald8.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "679249631722-6sbo08b5d4arm13pq9urcpaeenokcbfg.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.go.go"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
