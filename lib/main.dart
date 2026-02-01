@@ -22,7 +22,10 @@ class GoApp extends StatelessWidget {
         primaryColor: AppColors.primary,
         scaffoldBackgroundColor: AppColors.background,
         fontFamily: 'Cairo',
+        useMaterial3: true,
       ),
+      // هنا الـ HomeScreen هي اللي بتلعب دور المدير دلوقتي
+      // وبتعرض (الرئيسية، طلباتي، وحساب الشركات)
       home: const HomeScreen(),
     );
   }

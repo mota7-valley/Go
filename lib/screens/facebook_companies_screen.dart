@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../core/app_constants.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'campaign_details_screen.dart';
 
 class FacebookCompaniesScreen extends StatelessWidget {
@@ -10,252 +10,240 @@ class FacebookCompaniesScreen extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: const Color(0xFFF4F7FA),
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: Colors.transparent,
           elevation: 0,
-          leading: IconButton(
-            icon: const Icon(
-              Icons.arrow_back_ios_new_rounded,
-              color: AppColors.textMain,
-            ),
-            onPressed: () => Navigator.pop(context),
-          ),
           title: const Text(
-            "شركات النشر والاستهداف",
+            "الشركات المتاحة",
             style: TextStyle(
-              color: AppColors.textMain,
+              color: Color(0xFF1D2D50),
               fontWeight: FontWeight.bold,
             ),
           ),
           centerTitle: true,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF1D2D50)),
+            onPressed: () => Navigator.pop(context),
+          ),
         ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildActionCard(
-                context,
-                title: "شرح وطريقة الاستخدام",
-                icon: Icons.info_outline_rounded,
-                color: Colors.orange,
-                onTap: () => _showInfoDialog(context),
+        body: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('companies')
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return const Center(child: Text("لا توجد شركات مسجلة حالياً"));
+            }
+
+            var companies = snapshot.data!.docs;
+
+            return GridView.builder(
+              padding: const EdgeInsets.all(25),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                childAspectRatio: 0.8,
+                crossAxisSpacing: 15,
+                mainAxisSpacing: 15,
               ),
-              const SizedBox(height: 15),
-              _buildActionCard(
-                context,
-                title: "سياسة الاستخدام والشروط والأحكام",
-                icon: Icons.gavel_rounded,
-                color: Colors.redAccent,
-                onTap: () => _showPolicyDialog(context),
-              ),
-              const SizedBox(height: 30),
-              const Text(
-                "الشركات المتاحة",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textMain,
-                ),
-              ),
-              const SizedBox(height: 20),
-              _buildCompanyCard(
-                context,
-                name: "شركة النسر للتسويق",
-                logo: Icons.business_rounded,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const CampaignDetailsScreen(
-                        companyName: "شركة النسر للتسويق",
+              itemCount: companies.length,
+              itemBuilder: (context, index) {
+                var companyDoc = companies[index];
+                var company = companyDoc.data() as Map<String, dynamic>;
+                String companyId = companyDoc.id;
+                String name = company['companyName'] ?? "بدون اسم";
+                String? logo = company['logoUrl'];
+
+                return GestureDetector(
+                  onTap: () =>
+                      _showCompanyOptions(context, name, companyId, company),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 85,
+                        height: 85,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: logo != null && logo.isNotEmpty
+                              ? Image.network(logo, fit: BoxFit.cover)
+                              : const Icon(
+                                  Icons.business,
+                                  size: 40,
+                                  color: Colors.grey,
+                                ),
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
-            ],
+                      const SizedBox(height: 10),
+                      Text(
+                        name,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1D2D50),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  void _showCompanyOptions(
+    BuildContext context,
+    String name,
+    String id,
+    Map<String, dynamic> data,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1877F2),
+                  ),
+                ),
+                const SizedBox(height: 30),
+                _buildModalButton(
+                  context,
+                  "ابدأ الحملة",
+                  Icons.rocket_launch_rounded,
+                  const Color(0xFFE3F2FD),
+                  const Color(0xFF1877F2),
+                  () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CampaignDetailsScreen(
+                          companyId: id,
+                          companyName: name,
+                          companyData: data,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 15),
+                _buildModalButton(
+                  context,
+                  "للمساعدة والدعم الفني",
+                  Icons.headset_mic_rounded,
+                  const Color(0xFFFFF3E0),
+                  const Color(0xFFFF9800),
+                  () => _showSupportOptions(context),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildActionCard(
-    BuildContext context, {
-    required String title,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildModalButton(
+    BuildContext context,
+    String title,
+    IconData icon,
+    Color bg,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
+          color: bg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.1)),
         ),
         child: Row(
           children: [
-            Icon(icon, color: color),
-            const SizedBox(width: 15),
+            Icon(Icons.arrow_back_ios, size: 14, color: color),
+            const Spacer(),
             Text(
               title,
               style: TextStyle(
                 color: color,
                 fontWeight: FontWeight.bold,
-                fontSize: 15,
+                fontSize: 16,
               ),
             ),
-            const Spacer(),
-            Icon(Icons.arrow_forward_ios_rounded, size: 14, color: color),
+            const SizedBox(width: 15),
+            Icon(icon, color: color),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCompanyCard(
-    BuildContext context, {
-    required String name,
-    required IconData logo,
-    required VoidCallback onTap,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-          ),
-        ],
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(15),
-        leading: CircleAvatar(
-          radius: 30,
-          backgroundColor: AppColors.background,
-          child: Icon(logo, color: AppColors.primary, size: 30),
-        ),
-        title: Text(
-          name,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        subtitle: const Text("متصل حالياً - جاهز للتنفيذ"),
-        trailing: const Icon(Icons.arrow_forward_ios_rounded),
-        onTap: onTap,
-      ),
-    );
-  }
-
-  void _showInfoDialog(BuildContext context) {
+  void _showSupportOptions(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => Directionality(
         textDirection: TextDirection.rtl,
-        child: AlertDialog(
+        child: Dialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(30),
           ),
-          title: const Text(
-            "دليل استخدام خدمة النشر",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(25),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                _infoStep(
-                  "1. اختيار الشركة:",
-                  "اختر الشركة التي تفضل التعامل معها من القائمة المتاحة.",
+                const Text(
+                  "تواصل معنا",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                _infoStep(
-                  "2. تعبئة البيانات:",
-                  "أدخل بياناتك ورابط المنشور بشكل صحيح لضمان سرعة التنفيذ.",
+                const SizedBox(height: 20),
+                ListTile(
+                  leading: const Icon(Icons.phone, color: Colors.green),
+                  title: const Text("اتصال هاتفي"),
+                  onTap: () {},
                 ),
-                _infoStep(
-                  "3. تحديد الاستهداف:",
-                  "اختر المحافظات المستهدفة والميزانية المطلوبة عبر المؤشرات.",
-                ),
-                _infoStep(
-                  "4. تحويل المبلغ:",
-                  "انسخ رقم تحويل الشركة وأرسل المبلغ المطلوب.",
-                ),
-                _infoStep(
-                  "5. تأكيد الطلب:",
-                  "ارفع صورة التحويل واضغط تأكيد لتبدأ الشركة في المراجعة.",
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.chat, color: Colors.green),
+                  title: const Text("محادثة واتساب"),
+                  onTap: () {},
                 ),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("بدء الاستخدام"),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _infoStep(String title, String desc) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
-            ),
-          ),
-          Text(
-            desc,
-            style: const TextStyle(fontSize: 13, color: Colors.black87),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showPolicyDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: const Text(
-            "سياسة الاستخدام وإخلاء المسؤولية",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: const SingleChildScrollView(
-            child: Text(
-              "• تطبيق (Go) هو منصة تقنية وسيطة تربط بين المستخدم وشركات الخدمات؛ لذا فإن التطبيق غير مسؤول عن محتوى المنشورات أو نتائج الحملات.\n\n"
-              "• تخلي الشركات المتعاقدة مسؤوليتها تماماً عن أي منشور يخالف سياسات فيسبوك أو القوانين العامة، ويتحمل المستخدم المسؤولية القانونية الكاملة عن محتواه.\n\n"
-              "• يقر المستخدم بأن جميع البيانات (الروابط، الأرقام، المناطق) صحيحة، ولا يحق له طلب استرداد المبلغ بعد تحول حالة الطلب إلى (جاري التنفيذ).\n\n"
-              "• يحق للتطبيق والشركات رفض أي طلب لا يتوافق مع المعايير الأمنية والأخلاقية دون إبداء أسباب.",
-              style: TextStyle(fontSize: 13, height: 1.6),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("أوافق على جميع الشروط"),
-            ),
-          ],
         ),
       ),
     );

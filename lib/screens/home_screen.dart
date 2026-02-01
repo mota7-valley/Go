@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import '../core/app_constants.dart';
 import 'my_orders_screen.dart';
 import 'companies_screen.dart';
+import 'company_auth_screen.dart';
+import 'company_account_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,6 +16,21 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  final String adminPhone = "01220883999";
+
+  Future<void> _makePhoneCall() async {
+    final Uri url = Uri.parse('tel:$adminPhone');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+    }
+  }
+
+  Future<void> _openWhatsApp() async {
+    final Uri url = Uri.parse('https://wa.me/201220883999');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
           currentIndex: _currentIndex,
           selectedItemColor: AppColors.primary,
           unselectedItemColor: Colors.grey,
+          backgroundColor: Colors.white,
           type: BottomNavigationBarType.fixed,
           items: const [
             BottomNavigationBarItem(
@@ -35,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline_rounded),
-              label: "حسابي",
+              label: "حساب الشركات",
             ),
           ],
           onTap: (index) {
@@ -93,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       _buildCircularServiceButton(
                         context: context,
-                        title: "نشر و استهداف",
+                        title: "نشر و استهدف",
                         icon: Icons.facebook_rounded,
                         color: const Color(0xFF1877F2),
                         onTap: () => Navigator.push(
@@ -188,25 +208,126 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 25),
               _buildListOption(
                 context,
-                "تسجيل دخول الشركات",
-                Icons.login_rounded,
-                () {},
-              ),
-              _buildListOption(
-                context,
-                "إنشاء حساب شركات جديد",
-                Icons.app_registration_rounded,
-                () {},
+                "لوحة تحكم الشركة",
+                Icons.admin_panel_settings_rounded,
+                () {
+                  Navigator.pop(context);
+                  if (FirebaseAuth.instance.currentUser != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const CompanyAccountScreen(),
+                      ),
+                    );
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const CompanyAuthScreen(),
+                      ),
+                    );
+                  }
+                },
               ),
               _buildListOption(
                 context,
                 "تحدث معنا",
                 Icons.chat_bubble_outline_rounded,
-                () {},
+                () {
+                  Navigator.pop(context);
+                  _showSupportDialog(context);
+                },
               ),
               const SizedBox(height: 20),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _showSupportDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  "تواصل مع إدارة التطبيق",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 25),
+                _buildSupportButton(
+                  title: "اتصال هاتفي",
+                  icon: Icons.phone_in_talk,
+                  color: Colors.blue,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _makePhoneCall();
+                  },
+                ),
+                const SizedBox(height: 15),
+                _buildSupportButton(
+                  title: "محادثة واتساب",
+                  icon: Icons.chat,
+                  color: Colors.green,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _openWhatsApp();
+                  },
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    "إغلاق",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSupportButton({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color),
+            const Spacer(),
+            Text(
+              title,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ],
         ),
       ),
     );
