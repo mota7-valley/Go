@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:cloudinary_public/cloudinary_public.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/app_constants.dart';
 
 class CompanyAuthScreen extends StatefulWidget {
@@ -19,23 +24,72 @@ class _CompanyAuthScreenState extends State<CompanyAuthScreen> {
       TextEditingController();
 
   bool _isLoading = false;
+  File? _logoFile;
+
+  final cloudinary = CloudinaryPublic('dqyz90nfz', 'tvve8pts', cache: false);
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _logoFile = File(pickedFile.path);
+      });
+    }
+  }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!isLogin && _logoFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("يرجى اختيار لوجو الشركة")),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
     try {
       if (isLogin) {
-        // منطق تسجيل الدخول
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: "${_phoneController.text.trim()}@gmail.com",
+          password: _passwordController.text.trim(),
+        );
       } else {
-        // منطق إنشاء الحساب
+        CloudinaryResponse response = await cloudinary.uploadFile(
+          CloudinaryFile.fromFile(_logoFile!.path, folder: 'company_logos'),
+        );
+        String uploadedLogoUrl = response.secureUrl;
+
+        UserCredential userCredential = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(
+          email: "${_phoneController.text.trim()}@gmail.com",
+          password: _passwordController.text.trim(),
+        );
+
+        await FirebaseFirestore.instance
+            .collection('companies')
+            .doc(userCredential.user!.uid)
+            .set({
+          'companyId': userCredential.user!.uid,
+          'companyName': _nameController.text.trim(),
+          'phone': _phoneController.text.trim(),
+          'logoUrl': uploadedLogoUrl,
+          'role': 'company',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
       }
+      
+      if (!mounted) return;
+      Navigator.pop(context);
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
+        SnackBar(content: Text("خطأ: ${e.toString()}")),
       );
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -71,6 +125,33 @@ class _CompanyAuthScreenState extends State<CompanyAuthScreen> {
                   ),
                   const SizedBox(height: 40),
                   if (!isLogin) ...[
+                    GestureDetector(
+                      onTap: _pickImage,
+                      child: Container(
+                        height: 100,
+                        width: 100,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.2)),
+                          image: _logoFile != null
+                              ? DecorationImage(
+                                  image: FileImage(_logoFile!),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                        ),
+                        child: _logoFile == null
+                            ? const Icon(Icons.add_a_photo_outlined,
+                                color: AppColors.primary, size: 30)
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text("لوجو الشركة",
+                        style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    const SizedBox(height: 25),
                     _buildTextField(
                       controller: _nameController,
                       label: "اسم الشركة",

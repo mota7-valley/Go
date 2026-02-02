@@ -225,19 +225,17 @@ class HomeContent extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildCircularButton(
-                    context,
-                    "نشر و استهدف",
-                    Icons.facebook,
-                    const Color(0xFF1877F2),
-                    onFacebookTap,
+                  _AnimatedCircularButton(
+                    title: "نشر و استهدف",
+                    icon: Icons.facebook,
+                    color: const Color(0xFF1877F2),
+                    onTap: onFacebookTap,
                   ),
-                  _buildCircularButton(
-                    context,
-                    "تفعيل Canva",
-                    Icons.palette_rounded,
-                    const Color(0xFF00C4CC),
-                    onCanvaTap,
+                  _AnimatedCircularButton(
+                    title: "تفعيل Canva",
+                    icon: Icons.palette_rounded,
+                    color: const Color(0xFF00C4CC),
+                    onTap: onCanvaTap,
                   ),
                 ],
               ),
@@ -247,40 +245,85 @@ class HomeContent extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildCircularButton(
-    BuildContext context,
-    String title,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
+class _AnimatedCircularButton extends StatefulWidget {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _AnimatedCircularButton({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  State<_AnimatedCircularButton> createState() =>
+      _AnimatedCircularButtonState();
+}
+
+class _AnimatedCircularButtonState extends State<_AnimatedCircularButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.92).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       children: [
-        InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(100),
-          child: Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.15),
-                  blurRadius: 15,
-                  spreadRadius: 2,
-                ),
-              ],
+        GestureDetector(
+          onTapDown: (_) => _controller.forward(),
+          onTapUp: (_) {
+            _controller.reverse();
+            widget.onTap();
+          },
+          onTapCancel: () => _controller.reverse(),
+          child: ScaleTransition(
+            scale: _scaleAnimation,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(
+                    color: widget.color.withValues(alpha: 0.5), width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.color.withValues(alpha: 0.15),
+                    blurRadius: 15,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Icon(widget.icon, color: widget.color, size: 60),
             ),
-            child: Icon(icon, color: color, size: 60),
           ),
         ),
         const SizedBox(height: 15),
         Text(
-          title,
+          widget.title,
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
         ),
       ],

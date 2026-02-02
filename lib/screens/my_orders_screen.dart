@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../core/app_constants.dart';
 import 'edit_order_screen.dart';
 
@@ -8,10 +9,12 @@ class MyOrdersScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: const Color(0xFFF8F9FA),
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,
@@ -34,6 +37,7 @@ class MyOrdersScreen extends StatelessWidget {
         body: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collection('orders')
+              .where('userId', isEqualTo: user?.uid)
               .orderBy('createdAt', descending: true)
               .snapshots(),
           builder: (context, snapshot) {
@@ -71,27 +75,23 @@ class MyOrdersScreen extends StatelessWidget {
                 var order = doc.data() as Map<String, dynamic>;
                 String status = order['status'] ?? 'pending';
                 String companyName = order['companyName'] ?? 'شركة غير معروفة';
-                String currentUserName = order['userName'] ?? 'غير معروف';
+                String serviceType = order['serviceType'] ?? 'facebook';
                 String orderId = doc.id;
+                String? duration = order['duration'];
+                String? receiptUrl = order['paymentReceiptUrl'];
 
-                String dateDisplay = "غير محدد";
-                if (order['createdAt'] != null) {
-                  try {
-                    if (order['createdAt'] is Timestamp) {
-                      dateDisplay = (order['createdAt'] as Timestamp)
-                          .toDate()
-                          .toString()
-                          .split(' ')[0];
-                    } else {
-                      dateDisplay =
-                          DateTime.parse(order['createdAt'].toString())
-                              .toString()
-                              .split(' ')[0];
-                    }
-                  } catch (e) {
-                    dateDisplay = "قيد المعالجة";
-                  }
+                String dateDisplay = "قيد المعالجة";
+                if (order['createdAt'] != null &&
+                    order['createdAt'] is Timestamp) {
+                  dateDisplay = (order['createdAt'] as Timestamp)
+                      .toDate()
+                      .toString()
+                      .split(' ')[0];
                 }
+
+                bool isCanva = serviceType == 'canva';
+                Color serviceColor =
+                    isCanva ? const Color(0xFF00C4CC) : AppColors.primary;
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 15),
@@ -117,13 +117,14 @@ class MyOrdersScreen extends StatelessWidget {
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color:
-                                      AppColors.primary.withValues(alpha: 0.1),
+                                  color: serviceColor.withValues(alpha: 0.1),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(
-                                  Icons.business_center_rounded,
-                                  color: AppColors.primary,
+                                child: Icon(
+                                  isCanva
+                                      ? Icons.auto_awesome_mosaic_rounded
+                                      : Icons.campaign_rounded,
+                                  color: serviceColor,
                                   size: 24,
                                 ),
                               ),
@@ -139,12 +140,25 @@ class MyOrdersScreen extends StatelessWidget {
                                     ),
                                   ),
                                   Text(
-                                    "بتاريخ: $dateDisplay",
-                                    style: const TextStyle(
-                                      color: Colors.grey,
+                                    isCanva ? "خدمة Canva Pro" : "حملة إعلانية",
+                                    style: TextStyle(
+                                      color: serviceColor,
                                       fontSize: 12,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
+                                  if (isCanva && duration != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: Text(
+                                        duration,
+                                        style: const TextStyle(
+                                          color: Colors.grey,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w400,
+                                        ),
+                                      ),
+                                    ),
                                 ],
                               ),
                             ],
@@ -163,19 +177,15 @@ class MyOrdersScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                "صاحب الطلب",
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 12,
-                                ),
+                                "تاريخ الطلب",
+                                style:
+                                    TextStyle(color: Colors.grey, fontSize: 12),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                currentUserName,
+                                dateDisplay,
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
+                                    fontWeight: FontWeight.w600, fontSize: 14),
                               ),
                             ],
                           ),
@@ -183,25 +193,51 @@ class MyOrdersScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               const Text(
-                                "الإجمالي",
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 12,
-                                ),
+                                "المبلغ المدفوع",
+                                style:
+                                    TextStyle(color: Colors.grey, fontSize: 12),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                "${order['totalPrice'] ?? order['amount'] ?? 0} ج.م",
-                                style: const TextStyle(
+                                "${order['totalPrice'] ?? 0} ج.م",
+                                style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
-                                  color: AppColors.primary,
+                                  color: serviceColor,
                                 ),
                               ),
                             ],
                           ),
                         ],
                       ),
+                      if (receiptUrl != null && receiptUrl.isNotEmpty) ...[
+                        const SizedBox(height: 15),
+                        InkWell(
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => Dialog(
+                                child: Image.network(receiptUrl),
+                              ),
+                            );
+                          },
+                          child: Row(
+                            children: [
+                              const Icon(Icons.image_outlined,
+                                  size: 16, color: Colors.grey),
+                              const SizedBox(width: 5),
+                              Text(
+                                "عرض إيصال الدفع المرفق",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.blue.shade700,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       if (status == 'pending' || status == 'قيد المراجعة') ...[
                         const SizedBox(height: 15),
                         Row(
@@ -210,20 +246,14 @@ class MyOrdersScreen extends StatelessWidget {
                               child: OutlinedButton.icon(
                                 onPressed: () =>
                                     _confirmDelete(context, orderId),
-                                icon: const Icon(
-                                  Icons.delete_forever,
-                                  color: Colors.red,
-                                  size: 18,
-                                ),
-                                label: const Text(
-                                  "حذف الطلب",
-                                  style: TextStyle(color: Colors.red),
-                                ),
+                                icon: const Icon(Icons.delete_forever,
+                                    color: Colors.red, size: 18),
+                                label: const Text("حذف",
+                                    style: TextStyle(color: Colors.red)),
                                 style: OutlinedButton.styleFrom(
                                   side: const BorderSide(color: Colors.red),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
+                                      borderRadius: BorderRadius.circular(10)),
                                 ),
                               ),
                             ),
@@ -242,13 +272,12 @@ class MyOrdersScreen extends StatelessWidget {
                                   );
                                 },
                                 icon: const Icon(Icons.edit, size: 18),
-                                label: const Text("تعديل البيانات"),
+                                label: const Text("تعديل"),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
+                                  backgroundColor: serviceColor,
                                   foregroundColor: Colors.white,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
+                                      borderRadius: BorderRadius.circular(10)),
                                 ),
                               ),
                             ),
@@ -281,19 +310,14 @@ class MyOrdersScreen extends StatelessWidget {
         color = Colors.green;
         displayStatus = "تم التنفيذ ✅";
         break;
-      case 'pending':
-      case 'قيد المراجعة':
-        color = Colors.orange;
-        displayStatus = "قيد المراجعة";
-        break;
       case 'rejected':
       case 'مرفوض':
         color = Colors.red;
         displayStatus = "مرفوض";
         break;
       default:
-        color = Colors.grey;
-        displayStatus = status;
+        color = Colors.orange;
+        displayStatus = "قيد المراجعة";
     }
 
     return Container(
@@ -305,12 +329,8 @@ class MyOrdersScreen extends StatelessWidget {
       ),
       child: Text(
         displayStatus,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.bold,
-          fontSize: 11,
-        ),
+        style:
+            TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11),
       ),
     );
   }
@@ -321,9 +341,7 @@ class MyOrdersScreen extends StatelessWidget {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text("حذف الطلب"),
-        content: const Text(
-          "هل أنت متأكد من رغبتك في حذف هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء.",
-        ),
+        content: const Text("هل أنت متأكد من حذف هذا الطلب؟"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -337,10 +355,9 @@ class MyOrdersScreen extends StatelessWidget {
                   .delete();
               if (context.mounted) Navigator.pop(context);
             },
-            child: const Text(
-              "تأكيد الحذف",
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-            ),
+            child: const Text("تأكيد الحذف",
+                style:
+                    TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

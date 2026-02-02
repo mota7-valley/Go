@@ -30,7 +30,7 @@ class CompanyAccountScreen extends StatelessWidget {
           stream: FirebaseFirestore.instance
               .collection('orders')
               .where('companyId', isEqualTo: user?.uid)
-              .orderBy('timestamp', descending: true)
+              .orderBy('createdAt', descending: true)
               .snapshots(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -63,6 +63,7 @@ class CompanyAccountScreen extends StatelessWidget {
                 String orderId = orders[index].id;
                 String currentStatus = orderData['status'] ?? "قيد المراجعة";
                 String userName = orderData['userName'] ?? "عميل";
+                String? receiptUrl = orderData['paymentReceiptUrl'];
 
                 return Card(
                   elevation: 5,
@@ -99,6 +100,35 @@ class CompanyAccountScreen extends StatelessWidget {
                           "المبلغ الإجمالي",
                           "${orderData['totalPrice']} ج.م",
                         ),
+                        if (receiptUrl != null && receiptUrl.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          const Text(
+                            "إيصال الدفع:",
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                          ),
+                          const SizedBox(height: 5),
+                          GestureDetector(
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => Dialog(
+                                  child: Image.network(receiptUrl),
+                                ),
+                              );
+                            },
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.network(
+                                receiptUrl,
+                                height: 150,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Text("فشل تحميل الصورة"),
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 15),
                         const Text(
                           "تحديث حالة الطلب:",
