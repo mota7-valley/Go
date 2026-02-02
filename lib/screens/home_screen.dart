@@ -17,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   bool _showFacebookServices = false;
+  bool _showCanvaServices = false;
   final String adminPhone = "01220883999";
 
   Future<void> _makePhoneCall() async {
@@ -35,11 +36,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    Widget homeTabContent = _showFacebookServices
-        ? FacebookServicesScreen(
-            onBack: () => setState(() => _showFacebookServices = false))
-        : HomeContent(
-            onFacebookTap: () => setState(() => _showFacebookServices = true));
+    Widget homeTabContent;
+
+    if (_showFacebookServices) {
+      homeTabContent = FacebookServicesScreen(
+        onBack: () => setState(() => _showFacebookServices = false),
+      );
+    } else if (_showCanvaServices) {
+      homeTabContent = CanvaServicesScreen(
+        onBack: () => setState(() => _showCanvaServices = false),
+      );
+    } else {
+      homeTabContent = HomeContent(
+        onFacebookTap: () => setState(() => _showFacebookServices = true),
+        onCanvaTap: () => setState(() => _showCanvaServices = true),
+      );
+    }
 
     final List<Widget> pages = [
       homeTabContent,
@@ -77,7 +89,10 @@ class _HomeScreenState extends State<HomeScreen> {
             } else {
               setState(() {
                 _currentIndex = index;
-                if (index != 0) _showFacebookServices = false;
+                if (index != 0) {
+                  _showFacebookServices = false;
+                  _showCanvaServices = false;
+                }
               });
             }
           },
@@ -171,7 +186,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class HomeContent extends StatelessWidget {
   final VoidCallback onFacebookTap;
-  const HomeContent({super.key, required this.onFacebookTap});
+  final VoidCallback onCanvaTap;
+  const HomeContent(
+      {super.key, required this.onFacebookTap, required this.onCanvaTap});
 
   @override
   Widget build(BuildContext context) {
@@ -211,16 +228,16 @@ class HomeContent extends StatelessWidget {
                   _buildCircularButton(
                     context,
                     "نشر و استهدف",
-                    Icons.facebook_rounded,
+                    Icons.facebook,
                     const Color(0xFF1877F2),
                     onFacebookTap,
                   ),
                   _buildCircularButton(
                     context,
                     "تفعيل Canva",
-                    Icons.auto_awesome_rounded,
+                    Icons.palette_rounded,
                     const Color(0xFF00C4CC),
-                    () {},
+                    onCanvaTap,
                   ),
                 ],
               ),
@@ -250,11 +267,18 @@ class HomeContent extends StatelessWidget {
               color: Colors.white,
               shape: BoxShape.circle,
               border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.15),
+                  blurRadius: 15,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
-            child: Icon(icon, color: color, size: 50),
+            child: Icon(icon, color: color, size: 60),
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 15),
         Text(
           title,
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
@@ -353,8 +377,8 @@ class FacebookServicesScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Icon(
-                Icons.facebook_rounded,
-                size: 70,
+                Icons.facebook,
+                size: 80,
                 color: Color(0xFF1877F2),
               ),
               const SizedBox(height: 40),
@@ -427,6 +451,179 @@ class FacebookServicesScreen extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(icon, color: AppColors.primary, size: 24),
+          const SizedBox(width: 12),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class CanvaServicesScreen extends StatelessWidget {
+  final VoidCallback onBack;
+  const CanvaServicesScreen({super.key, required this.onBack});
+
+  void _showInfoSheet(BuildContext context, String title, String content) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      builder: (context) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Container(
+          padding: const EdgeInsets.all(25),
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 50,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF00C4CC),
+                ),
+              ),
+              const Divider(height: 30),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Text(
+                    content,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      height: 1.8,
+                      color: AppColors.textMain,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              MaterialButton(
+                onPressed: () => Navigator.pop(context),
+                minWidth: double.infinity,
+                height: 55,
+                color: const Color(0xFF00C4CC),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: const Text(
+                  "فهمت ذلك",
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF00C4CC)),
+          onPressed: onBack,
+        ),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(25),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.palette_rounded,
+                size: 70,
+                color: Color(0xFF00C4CC),
+              ),
+              const SizedBox(height: 40),
+              _buildServiceButton(
+                context,
+                "الشركات المتاحة",
+                Icons.business_rounded,
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CompaniesScreen(),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 15),
+              _buildServiceButton(
+                context,
+                "شرح وطريقة التفعيل",
+                Icons.help_outline_rounded,
+                () => _showInfoSheet(
+                  context,
+                  "شرح وطريقة التفعيل",
+                  "مرحباً بك في خدمة 'تفعيل Canva Pro'. إليك خطوات تفعيل حسابك:\n\n"
+                      "1. اختيار الشركة: اختر إحدى الشركات التي توفر خدمة تفعيل كانفا.\n"
+                      "2. تقديم الطلب: قم بإرسال الإيميل الخاص بك المراد تفعيله.\n"
+                      "3. استلام الدعوة: ستصلك دعوة الانضمام لفريق Canva Pro على إيميلك الشخصي.\n"
+                      "4. التفعيل: بمجرد قبول الدعوة، سيتحول حسابك فوراً إلى النسخة المدفوعة Pro.\n"
+                      "5. المتابعة: يمكنك مراجعة حالة طلبك من قسم 'طلباتي'.",
+                ),
+              ),
+              const SizedBox(height: 15),
+              _buildServiceButton(
+                context,
+                "سياسة التفعيل والشروط",
+                Icons.gavel_rounded,
+                () => _showInfoSheet(
+                  context,
+                  "سياسة التفعيل والشروط",
+                  "شروط خدمة تفعيل Canva:\n\n"
+                      "• صلاحية الحساب: التفعيل يتم عن طريق نظام الفرق (Teams)، وتضمن الشركة بقاء الاشتراك طوال المدة المحددة.\n"
+                      "• الخصوصية: تصاميمك خاصة بك تماماً ولا يمكن لأي عضو آخر في رؤيتها.\n"
+                      "• الدعم الفني: في حال حدوث اي مشكلة لأي سبب تقني، يتم التواصل مع الشركة لإعادة التفعيل مجاناً.\n"
+                      "• الإيميل الشخصي: يجب التأكد من كتابة الإيميل بشكل صحيح، حيث لا يمكن استرداد المبلغ بعد إرسال الدعوة.",
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildServiceButton(
+      BuildContext context, String title, IconData icon, VoidCallback onTap) {
+    return MaterialButton(
+      onPressed: onTap,
+      minWidth: double.infinity,
+      height: 70,
+      color: Colors.white,
+      elevation: 0,
+      highlightElevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: const Color(0xFF00C4CC).withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: const Color(0xFF00C4CC), size: 24),
           const SizedBox(width: 12),
           Text(
             title,
