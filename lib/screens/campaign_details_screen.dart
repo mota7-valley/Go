@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/app_constants.dart';
+import 'payment_screen.dart';
 
 class CampaignDetailsScreen extends StatefulWidget {
   final String companyId;
@@ -29,12 +30,12 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // استخدام الأسعار القادمة من بيانات الشركة فعلياً
-    Map<String, dynamic> prices = widget.companyData['prices'] ?? {
-      'publish': [0, 100, 200, 300, 400],
-      'interaction': [0, 50, 100, 150, 200],
-      'followers': [0, 20, 40, 60, 80],
-    };
+    Map<String, dynamic> prices = widget.companyData['prices'] ??
+        {
+          'publish': [0, 100, 200, 300, 400],
+          'interaction': [0, 50, 100, 150, 200],
+          'followers': [0, 20, 40, 60, 80],
+        };
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -52,7 +53,8 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
               children: [
                 _buildSectionTitle("بيانات العميل"),
                 _buildTextField(_nameController, "اسمك الثنائي", Icons.person),
-                _buildTextField(_phoneController, "رقم الهاتف", Icons.phone, isPhone: true),
+                _buildTextField(_phoneController, "رقم الهاتف", Icons.phone,
+                    isPhone: true),
                 _buildTextField(_linkController, "رابط المنشور", Icons.link),
                 const SizedBox(height: 20),
                 _buildSectionTitle("تفاصيل الحملة"),
@@ -76,7 +78,8 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                   onChanged: (v) => setState(() => _selectedLocation = v!),
                 ),
                 const SizedBox(height: 20),
-                Text("الميزانية (الأسعار تبدأ من ${prices['publish'][1]} ج.م):"),
+                Text(
+                    "الميزانية (الأسعار تبدأ من ${prices['publish'][1]} ج.م):"),
                 Slider(
                   value: _budget,
                   min: 100,
@@ -89,15 +92,38 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                 ElevatedButton(
                   onPressed: () {
                     if (_formKey.currentState!.validate()) {
-                      // سيتم ربط صفحة الدفع هنا
+                      Map<String, dynamic> orderData = {
+                        'userName': _nameController.text.trim(),
+                        'userPhone': _phoneController.text.trim(),
+                        'postLink': _linkController.text.trim(),
+                        'serviceType': _selectedService,
+                        'location': _selectedLocation,
+                        'companyId': widget.companyId,
+                        'companyName': widget.companyName,
+                        'totalPrice': _budget,
+                        'status': 'pending',
+                        'createdAt': DateTime.now().toIso8601String(),
+                      };
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PaymentScreen(
+                            amount: _budget,
+                            orderData: orderData,
+                          ),
+                        ),
+                      );
                     }
                   },
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 55),
                     backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text("متابعة لعملية الدفع", style: TextStyle(color: Colors.white, fontSize: 18)),
+                  child: const Text("متابعة لعملية الدفع",
+                      style: TextStyle(color: Colors.white, fontSize: 18)),
                 ),
               ],
             ),
@@ -110,11 +136,16 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary)),
+      child: Text(title,
+          style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary)),
     );
   }
 
-  Widget _buildTextField(TextEditingController ctrl, String hint, IconData icon, {bool isPhone = false}) {
+  Widget _buildTextField(TextEditingController ctrl, String hint, IconData icon,
+      {bool isPhone = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: TextFormField(

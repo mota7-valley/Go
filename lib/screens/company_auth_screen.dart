@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/app_constants.dart';
 
 class CompanyAuthScreen extends StatefulWidget {
@@ -11,68 +9,33 @@ class CompanyAuthScreen extends StatefulWidget {
 }
 
 class _CompanyAuthScreenState extends State<CompanyAuthScreen> {
+  bool isLogin = true;
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _companyNameController = TextEditingController();
+
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   bool _isLoading = false;
-  bool _isLogin = true;
 
-  Future<void> _handleAuth() async {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
     try {
-      if (_isLogin) {
-        await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-        );
+      if (isLogin) {
+        // منطق تسجيل الدخول
       } else {
-        UserCredential userCredential = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(
-              email: _emailController.text.trim(),
-              password: _passwordController.text.trim(),
-            );
-
-        await FirebaseFirestore.instance
-            .collection('companies')
-            .doc(userCredential.user!.uid)
-            .set({
-              'companyId': userCredential.user!.uid,
-              'companyName': _companyNameController.text.trim(),
-              'logoUrl': '',
-              'email': _emailController.text.trim(),
-              'createdAt': FieldValue.serverTimestamp(),
-              'prices': {
-                'publish': [0, 100, 200, 300, 400],
-                'interaction': [0, 50, 100, 150, 200],
-                'followers': [0, 20, 40, 60, 80],
-              },
-            });
+        // منطق إنشاء الحساب
       }
-
-      if (mounted) {
-        Navigator.pop(context);
-      }
-    } on FirebaseAuthException catch (e) {
-      String message = "حدث خطأ ما";
-      if (e.code == 'user-not-found') {
-        message = "البريد الإلكتروني غير مسجل";
-      } else if (e.code == 'wrong-password') {
-        message = "كلمة المرور خاطئة";
-      } else if (e.code == 'email-already-in-use') {
-        message = "هذا البريد مسجل بالفعل";
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
-      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      setState(() => _isLoading = false);
     }
   }
 
@@ -83,71 +46,104 @@ class _CompanyAuthScreenState extends State<CompanyAuthScreen> {
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
-          title: Text(_isLogin ? "تسجيل دخول الشركات" : "تسجيل شركة جديدة"),
-          centerTitle: true,
+          backgroundColor: Colors.transparent,
           elevation: 0,
-          backgroundColor: Colors.white,
-          foregroundColor: AppColors.primary,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios, color: AppColors.primary),
+            onPressed: () => Navigator.pop(context),
+          ),
         ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(30),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                const Icon(
-                  Icons.business_center_rounded,
-                  size: 80,
-                  color: AppColors.primary,
-                ),
-                const SizedBox(height: 40),
-                if (!_isLogin)
-                  _buildTextField(
-                    _companyNameController,
-                    "اسم الشركة",
-                    Icons.business,
+        body: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 25),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    isLogin ? "دخول الشركات" : "إنشاء حساب شركة جديد",
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
                   ),
-                _buildTextField(
-                  _emailController,
-                  "البريد الإلكتروني للشركة",
-                  Icons.email,
-                ),
-                _buildTextField(
-                  _passwordController,
-                  "كلمة المرور",
-                  Icons.lock,
-                  isPass: true,
-                ),
-                const SizedBox(height: 30),
-                _isLoading
-                    ? const CircularProgressIndicator()
-                    : ElevatedButton(
-                        onPressed: _handleAuth,
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 55),
-                          backgroundColor: AppColors.primary,
+                  const SizedBox(height: 40),
+                  if (!isLogin) ...[
+                    _buildTextField(
+                      controller: _nameController,
+                      label: "اسم الشركة",
+                      icon: Icons.business_rounded,
+                    ),
+                    const SizedBox(height: 15),
+                  ],
+                  _buildTextField(
+                    controller: _phoneController,
+                    label: "رقم الهاتف",
+                    icon: Icons.phone_android_rounded,
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 15),
+                  _buildTextField(
+                    controller: _passwordController,
+                    label: "كلمة المرور",
+                    icon: Icons.lock_outline_rounded,
+                    isPassword: true,
+                  ),
+                  if (!isLogin) ...[
+                    const SizedBox(height: 15),
+                    _buildTextField(
+                      controller: _confirmPasswordController,
+                      label: "إعادة كلمة المرور",
+                      icon: Icons.lock_reset_rounded,
+                      isPassword: true,
+                      validator: (value) {
+                        if (value != _passwordController.text) {
+                          return "كلمات المرور غير متطابقة";
+                        }
+                        if (value == null || value.isEmpty) {
+                          return "هذا الحقل مطلوب";
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                  const SizedBox(height: 30),
+                  _isLoading
+                      ? const CircularProgressIndicator()
+                      : MaterialButton(
+                          onPressed: _submit,
+                          color: AppColors.primary,
+                          minWidth: double.infinity,
+                          height: 55,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
                           ),
-                        ),
-                        child: Text(
-                          _isLogin ? "دخول" : "إنشاء حساب شركة",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
+                          child: Text(
+                            isLogin ? "تسجيل الدخول" : "إنشاء الحساب",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
+                  const SizedBox(height: 20),
+                  TextButton(
+                    onPressed: () => setState(() => isLogin = !isLogin),
+                    child: Text(
+                      isLogin
+                          ? "ليس لديك حساب شركة؟ سجل الآن"
+                          : "لديك حساب بالفعل؟ سجل دخول",
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
                       ),
-                const SizedBox(height: 15),
-                TextButton(
-                  onPressed: () => setState(() => _isLogin = !_isLogin),
-                  child: Text(
-                    _isLogin
-                        ? "ليس لديك حساب؟ سجل شركتك الآن"
-                        : "لديك حساب بالفعل؟ سجل دخولك",
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -155,29 +151,35 @@ class _CompanyAuthScreenState extends State<CompanyAuthScreen> {
     );
   }
 
-  Widget _buildTextField(
-    TextEditingController ctrl,
-    String hint,
-    IconData icon, {
-    bool isPass = false,
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool isPassword = false,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
   }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: TextFormField(
-        controller: ctrl,
-        obscureText: isPass,
-        textAlign: TextAlign.right,
-        decoration: InputDecoration(
-          hintText: hint,
-          prefixIcon: Icon(icon, color: AppColors.primary),
-          filled: true,
-          fillColor: const Color(0xFFF5F5F5),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: BorderSide.none,
-          ),
+    return TextFormField(
+      controller: controller,
+      obscureText: isPassword,
+      keyboardType: keyboardType,
+      validator: validator ??
+          (value) {
+            if (value == null || value.isEmpty) {
+              return "هذا الحقل مطلوب";
+            }
+            return null;
+          },
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: AppColors.primary),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
         ),
-        validator: (v) => (v == null || v.isEmpty) ? "هذا الحقل مطلوب" : null,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
       ),
     );
   }

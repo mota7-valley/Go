@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/app_constants.dart';
-import 'edit_order_screen.dart'; // تأكد من استيراد ملف شاشة التعديل
+import 'edit_order_screen.dart';
 
 class MyOrdersScreen extends StatelessWidget {
   const MyOrdersScreen({super.key});
@@ -69,10 +69,29 @@ class MyOrdersScreen extends StatelessWidget {
               itemBuilder: (context, index) {
                 var doc = snapshot.data!.docs[index];
                 var order = doc.data() as Map<String, dynamic>;
-                String status = order['status'] ?? 'قيد المراجعة';
+                String status = order['status'] ?? 'pending';
                 String companyName = order['companyName'] ?? 'شركة غير معروفة';
                 String currentUserName = order['userName'] ?? 'غير معروف';
                 String orderId = doc.id;
+
+                String dateDisplay = "غير محدد";
+                if (order['createdAt'] != null) {
+                  try {
+                    if (order['createdAt'] is Timestamp) {
+                      dateDisplay = (order['createdAt'] as Timestamp)
+                          .toDate()
+                          .toString()
+                          .split(' ')[0];
+                    } else {
+                      dateDisplay =
+                          DateTime.parse(order['createdAt'].toString())
+                              .toString()
+                              .split(' ')[0];
+                    }
+                  } catch (e) {
+                    dateDisplay = "قيد المعالجة";
+                  }
+                }
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 15),
@@ -98,9 +117,8 @@ class MyOrdersScreen extends StatelessWidget {
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(
-                                    alpha: 0.1,
-                                  ),
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.1),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -121,7 +139,7 @@ class MyOrdersScreen extends StatelessWidget {
                                     ),
                                   ),
                                   Text(
-                                    "بتاريخ: ${order['createdAt'] != null ? (order['createdAt'] as Timestamp).toDate().toString().split(' ')[0] : 'محلي'}",
+                                    "بتاريخ: $dateDisplay",
                                     style: const TextStyle(
                                       color: Colors.grey,
                                       fontSize: 12,
@@ -131,7 +149,7 @@ class MyOrdersScreen extends StatelessWidget {
                               ),
                             ],
                           ),
-                          _buildStatusBadge(status, companyName),
+                          _buildStatusBadge(status),
                         ],
                       ),
                       const Padding(
@@ -173,7 +191,7 @@ class MyOrdersScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                "${order['amount']} ج.م",
+                                "${order['totalPrice'] ?? order['amount'] ?? 0} ج.م",
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
@@ -184,7 +202,7 @@ class MyOrdersScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      if (status == 'قيد المراجعة') ...[
+                      if (status == 'pending' || status == 'قيد المراجعة') ...[
                         const SizedBox(height: 15),
                         Row(
                           children: [
@@ -248,19 +266,34 @@ class MyOrdersScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusBadge(String status, String companyName) {
+  Widget _buildStatusBadge(String status) {
     Color color;
-    String displayStatus = status;
+    String displayStatus;
 
-    if (status == 'تم التأكيد وجاري التنفيذ') {
-      color = Colors.blue;
-    } else if (status.contains('تم التنفيذ والانتهاء')) {
-      color = Colors.green;
-      displayStatus = "تم التنفيذ ✅";
-    } else if (status == 'قيد المراجعة') {
-      color = Colors.orange;
-    } else {
-      color = Colors.grey;
+    switch (status) {
+      case 'approved':
+      case 'تم التأكيد وجاري التنفيذ':
+        color = Colors.blue;
+        displayStatus = "جاري التنفيذ";
+        break;
+      case 'completed':
+      case 'تم التنفيذ والانتهاء':
+        color = Colors.green;
+        displayStatus = "تم التنفيذ ✅";
+        break;
+      case 'pending':
+      case 'قيد المراجعة':
+        color = Colors.orange;
+        displayStatus = "قيد المراجعة";
+        break;
+      case 'rejected':
+      case 'مرفوض':
+        color = Colors.red;
+        displayStatus = "مرفوض";
+        break;
+      default:
+        color = Colors.grey;
+        displayStatus = status;
     }
 
     return Container(
